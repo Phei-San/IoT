@@ -15,12 +15,9 @@ const char *MQTT_TOPIC = "iot"; // MQTT topic
 
 const int DHT_PIN = A4;
 const int DHT_TYPE = DHT11;
-// const int dhtPin = A4
 const int rainPin = A5;
 const int soilPin = A2;
 int servoPin = 38;
-float startSoilMoist;
-int startTime;
 
 float min_soilMoisture = (100 - 2048.0/4095*100);  
 float max_soilMoisture = (100 - 1229.0/4095*100);  
@@ -45,15 +42,7 @@ void setup_wifi()
   Serial.println(WiFi.localIP());
 }
 
-void callback(char* MQTT_TOPIC, byte* payload, unsigned int length) {
-  Serial.print("Message received on MQTT_TOPIC: ");
-  Serial.print(MQTT_TOPIC);
-  Serial.print(". Message: ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-}
+
 
 void setup()
 {
@@ -61,13 +50,11 @@ void setup()
   dht.begin();
   setup_wifi();
   client.setServer(MQTT_SERVER, MQTT_PORT);
-  client.setCallback(callback);
+  //client.setCallback(callback);
 
   pinMode(rainPin, INPUT);
   pinMode(soilPin, INPUT);
   servo.attach(servoPin);
-  startSoilMoist = (100 - analogRead(soilPin)/4095*100);
-  startTime = millis();
 }
 
 void reconnect()
@@ -92,25 +79,21 @@ void loop()
   if (!client.connected()) {
     reconnect();
   }
-
-  // int readData = DHT.read(dhtPin);
-  // float t_C = DHT.temperature;
   
   int cover = 0;
   int uncover = 120;
 
   client.loop();
   delay(5000); // adjust the delay according to your requirements
-  float temperature = dht.readTemperature();
+  int temperature = dht.readTemperature();
+  int humidity = dht.readHumidity();
   Serial.print("Temperature: ");
   Serial.println(temperature);
-  char payload[10];
-  sprintf(payload, "%.2f", temperature);
-  float timeToChange1;
+  Serial.print("Humidity: ");
+  Serial.println(humidity);
 
   float rainValue = rainSensor();
   float curSoilMoist = soilSensor();
-  int curTime = millis();
 
   //COVER THE PLANT WHEN RAINING AND THE SOIL IS TOO MOISTURE 
   //servo 120 degree - uncover the plant
@@ -145,43 +128,11 @@ void loop()
     }
   }
 
-//-----------------------------------------------------------------------------------
-//-----------------------------------------------------------------------------------
-//-----------------------------------------------------------------------------------
-  //PREDICT AFTER HOW MANY MINUTES/HOURS SHOULD WATER THE PLANT
-  if (curSoilMoist <= min_soilMoisture) {
-    Serial.println("You should water the plant now!");
-  }
-  else if (min_soilMoisture <= curSoilMoist && curSoilMoist <= max_soilMoisture){
-    Serial.print("Current Soil Moisture: ");
-    Serial.println(curSoilMoist);
-    Serial.print("Start Soil Moisture: ");
-    Serial.println(startSoilMoist);
-
-    if(startSoilMoist > curSoilMoist) {
-      timeToChange1 = (curTime - startTime) / (startSoilMoist - curSoilMoist);
-    }
-    else {
-      timeToChange1 = (curTime - startTime) / (curSoilMoist - startSoilMoist);
-    }
-
-    float durationToWater = (curSoilMoist - min_soilMoisture) * timeToChange1;
-    float timeTowater = curTime + durationToWater;
-    Serial.print("You should water the plant after ");
-    Serial.print(timeTowater/1000.0/60/60);
-    Serial.println(" hours");
-  }
-  else {
-    startSoilMoist = curSoilMoist;
-    startTime = millis();
-  }
-
-//-----------------------------------------------------------------------------------
-//-----------------------------------------------------------------------------------
-//-----------------------------------------------------------------------------------
-
   delay(500);
-  //client.publish(MQTT_TOPIC, payload);
+  char payload[128];
+  sprintf(payload, "Temperature: %d; Humidity: %d; Soil Moisture: %.2f", temperature, humidity, curSoilMoist);
+  client.publish(MQTT_TOPIC, payload);
+  
 }
 
 // highest value is 4095 - no rain
