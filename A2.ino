@@ -19,8 +19,8 @@ const int rainPin = A5;
 const int soilPin = A2;
 int servoPin = 38;
 
-float min_soilMoisture = (100 - 2048.0/4095*100);  
-float max_soilMoisture = (100 - 1229.0/4095*100);  
+float min_soilMoisture = (100 - 3276.0/4095*100);  //min mositure value is 20%
+float max_soilMoisture = (100 - 2457.0/4095*100);  //max moisture value is 40%
 
 // dht11 DHT;
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -87,6 +87,7 @@ void loop()
   delay(5000); // adjust the delay according to your requirements
   int temperature = dht.readTemperature();
   int humidity = dht.readHumidity();
+  Serial.println("----------------------------------------------");
   Serial.print("Temperature: ");
   Serial.println(temperature);
   Serial.print("Humidity: ");
@@ -100,18 +101,13 @@ void loop()
   //servo 0 degree - cover the plant
   // if raining
   if(rainValue == LOW) {
+    Serial.println("Raining");
     //if the soil is too dry
     if(curSoilMoist < min_soilMoisture) {
-      Serial.print("Current Soil Moisture: ");
-      Serial.print(curSoilMoist);
-      Serial.println("%");
       servo.write(uncover); //open
     }
     //if the soil is too moisture
     else if(curSoilMoist > max_soilMoisture) {
-      Serial.print("Current Soil Moisture: ");
-      Serial.print(curSoilMoist);
-      Serial.println("%");
       servo.write(cover); //close
     }
   }
@@ -120,6 +116,7 @@ void loop()
   // uncover the plant if the soil is too wet
   // else do nothing
   else {
+    Serial.println("Sunny");
     if (curSoilMoist > max_soilMoisture) {
       servo.write(uncover); //open
     }
@@ -139,8 +136,6 @@ void loop()
 // the lower the value, the heavier the rain
 float rainSensor() {
   float sensorValue = digitalRead(rainPin);  // Read the analog value from sensor
-  Serial.print("Rain Sensor Value: ");
-  Serial.println(sensorValue);
   return sensorValue;
 }
 
@@ -148,7 +143,8 @@ float rainSensor() {
 // the lower the value, the moisture the soil
 float soilSensor() {
   float sensorValue = analogRead(soilPin);  // Read the analog value from sensor
-  Serial.print("Soil Sensor Value: ");
-  Serial.println(100 - sensorValue/4095*100);
-  return (100 - sensorValue/4095*100);
+  float soilMoisture = 100 - sensorValue/4095*100;
+  Serial.print("Current Soil Moisture: ");
+  Serial.println(soilMoisture);
+  return soilMoisture;
 }
