@@ -20,7 +20,7 @@ const int soilPin = A2;
 int servoPin = 38;
 
 float min_soilMoisture = (100 - 3276.0/4095*100);  //min mositure value is 20%
-float max_soilMoisture = (100 - 2457.0/4095*100);  //max moisture value is 40%
+float max_soilMoisture = (100 - 2867.0/4095*100);  //max moisture value is 30%
 
 // dht11 DHT;
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -100,7 +100,7 @@ void loop()
   //servo 120 degree - uncover the plant
   //servo 0 degree - cover the plant
   // if raining
-  if(rainValue == LOW) {
+  if(rainValue == HIGH) {
     Serial.println("Raining");
     //if the soil is too dry
     if(curSoilMoist < min_soilMoisture) {
@@ -127,7 +127,7 @@ void loop()
 
   delay(500);
   char payload[128];
-  sprintf(payload, "Temperature: %d; Humidity: %d; Soil Moisture: %.2f", temperature, humidity, curSoilMoist);
+  sprintf(payload, "Temperature: %d; Humidity: %d; Soil Moisture: %.2f; Rain: %.2f", temperature, humidity, curSoilMoist, rainValue);
   client.publish(MQTT_TOPIC, payload);
   
 }
@@ -135,7 +135,7 @@ void loop()
 // highest value is 4095 - no rain
 // the lower the value, the heavier the rain
 float rainSensor() {
-  float sensorValue = digitalRead(rainPin);  // Read the analog value from sensor
+  float sensorValue = !digitalRead(rainPin);  // Read the analog value from sensor
   return sensorValue;
 }
 
