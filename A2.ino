@@ -9,10 +9,11 @@ ESP32 publish telemetry data to Google Cloud (DHT11 sensor)
 
 const char *WIFI_SSID = "wifi9738"; //your WiFi SSID
 const char *WIFI_PASSWORD = "huanle_9738"; // your password
-const char *MQTT_SERVER = "34.136.246.247"; // your VM instance public IP address
+const char *MQTT_SERVER = "35.225.222.172"; // your VM instance public IP address
 const int MQTT_PORT = 1883;
 const char *MQTT_TOPIC = "iot"; // MQTT topic
 
+//Used Pins
 const int DHT_PIN = A4;
 const int DHT_TYPE = DHT11;
 const int rainPin = A5;
@@ -21,12 +22,16 @@ int servoPin = 38;
 
 float min_soilMoisture = (100 - 3276.0/4095*100);  //min mositure value is 20%
 float max_soilMoisture = (100 - 2867.0/4095*100);  //max moisture value is 30%
+  int cover = 0;
+  int uncover = 120;
 
-// dht11 DHT;
+// input sensor
 DHT dht(DHT_PIN, DHT_TYPE);
 Servo servo;
-WiFiClient espClient;
+
+//Create an instance 
 PubSubClient client(espClient);
+WiFiClient espClient;
 
 void setup_wifi()
 {
@@ -79,9 +84,6 @@ void loop()
   if (!client.connected()) {
     reconnect();
   }
-  
-  int cover = 0;
-  int uncover = 120;
 
   client.loop();
   delay(5000); // adjust the delay according to your requirements
@@ -97,11 +99,12 @@ void loop()
   float curSoilMoist = soilSensor();
 
   //COVER THE PLANT WHEN RAINING AND THE SOIL IS TOO MOISTURE 
-  //servo 120 degree - uncover the plant
-  //servo 0 degree - cover the plant
   // if raining
+    // cover the plant is the soil is too moisture 
+    // uncover the plant if the soil is too dry
+    // else do nothing
   if(rainValue == HIGH) {
-    Serial.println("Raining");
+    Serial.println("Raining: 1");
     //if the soil is too dry
     if(curSoilMoist < min_soilMoisture) {
       servo.write(uncover); //open
@@ -116,7 +119,7 @@ void loop()
   // uncover the plant if the soil is too wet
   // else do nothing
   else {
-    Serial.println("Sunny");
+    Serial.println("Raining: 0");
     if (curSoilMoist > max_soilMoisture) {
       servo.write(uncover); //open
     }
@@ -126,21 +129,28 @@ void loop()
   }
 
   delay(500);
+  //publish data
   char payload[128];
   sprintf(payload, "Temperature: %d; Humidity: %d; Soil Moisture: %.2f; Rain: %.2f", temperature, humidity, curSoilMoist, rainValue);
   client.publish(MQTT_TOPIC, payload);
   
 }
 
-// highest value is 4095 - no rain
-// the lower the value, the heavier the rain
-float rainSensor() {
-  float sensorValue = !digitalRead(rainPin);  // Read the analog value from sensor
-  return sensorValue;
+// highest analog value is 4095 - no rain
+int rainSensor() {
+  float sensorValue = analogRead(rainPin);
+  int raining = 1;
+  int sunny = 0;
+
+  if (sensorValue < 4000) {
+    return raining;
+  }
+  else {
+    return sunny;
+  }
 }
 
-// highest value is 4095 - dry
-// the lower the value, the moisture the soil
+// highest analog value is 4095 - dry
 float soilSensor() {
   float sensorValue = analogRead(soilPin);  // Read the analog value from sensor
   float soilMoisture = 100 - sensorValue/4095*100;
