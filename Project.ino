@@ -147,7 +147,7 @@ void loop() {
     }
 }
 
-// highest value is 4095 - no rain
+// highest analog value is 4095 - no rain
 int rainSensor() {
   float sensorValue = analogRead(rainPin);
   int raining = 1;
@@ -161,7 +161,7 @@ int rainSensor() {
   }
 }
 
-// highest value is 4095 - dry
+// highest analog value is 4095 - dry
 float soilSensor() {
   float sensorValue = analogRead(soilPin);  // Read the analog value from sensor
   float soilMoisture = 100 - sensorValue/4095*100;
